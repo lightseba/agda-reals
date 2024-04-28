@@ -17,11 +17,15 @@ open import Relation.Binary.PropositionalEquality
 
 open import Data.Product using (∃-syntax; Σ-syntax; _×_; _,_)
 open import Function.Bundles using (_⇔_; Equivalence)
+open import Relation.Binary using (tri<; tri≈; tri>)
 open import Relation.Nullary.Negation.Core using (¬_)
 open import Relation.Nullary using (yes; no; Dec)
 
 open import Logic using (_∨_; _∧_; left; right; _,_; swap; proj₁; proj₂)
 open import RealLemmas
+
+------------------------------------------------------------------------
+-- Types
 
 record ℝ : Set₁ where
   constructor real
@@ -36,16 +40,8 @@ record ℝ : Set₁ where
 
 open ℝ
 
-reverse-located : ∀ (x : ℝ) {a b : ℚ} → L x a → U x b → a < b
-reverse-located x {a} {b} La Ub with a ℚ.<? b | b ℚ.<? a
-... | yes a<b | _ = a<b
-... | no ¬a<b | yes b<a = ⊥-elim (disjoint x a (La , Ua))
-  where
-  Ua = Equivalence.from (proj₂ (rounded x a a)) (_ , b<a , Ub)
-... | no ¬a<b | no ¬b<a = ⊥-elim (disjoint x a (La , Ua))
-  where
-  b=a = ℚ.≤-antisym (ℚ.≮⇒≥ ¬a<b) (ℚ.≮⇒≥ ¬b<a)
-  Ua = subst (U x) b=a Ub
+------------------------------------------------------------------------
+-- Construction
 
 ℚ→ℝ : ℚ → ℝ
 ℚ→ℝ q₀ = record 
@@ -70,11 +66,28 @@ reverse-located x {a} {b} La Ub with a ℚ.<? b | b ℚ.<? a
   ; located = <-lemma q₀
   }
 
+------------------------------------------------------------------------
+-- Constants
+
 0ℝ : ℝ
 0ℝ = ℚ→ℝ 0ℚ
 
 1ℝ : ℝ
 1ℝ = ℚ→ℝ 1ℚ
+
+------------------------------------------------------------------------
+-- useful lemma
+
+reverse-located : ∀ (x : ℝ) {a b : ℚ} → L x a → U x b → a < b
+reverse-located x {a} {b} La Ub with ℚ.<-cmp a b 
+... | tri< a<b _ _ = a<b
+... | tri≈ _ refl _ = ⊥-elim (disjoint x a (La , Ub))
+... | tri> _ _ a>b = ⊥-elim (disjoint x a (La , Ua))
+  where Ua = Equivalence.from (proj₂ (rounded x a a)) (_ , a>b , Ub)
+
+
+------------------------------------------------------------------------
+-- Estimate a real within arbitary ε
 
 refine : ∀ x a b → L x a → U x b → Σ[ (u , v) ∈ ℚ × ℚ ] (L x u ∧ U x v ∧ v - u ≡ (b - a) * ¾)
 refine x a b La Ub = res
@@ -96,19 +109,17 @@ refine x a b La Ub = res
     where
     eq = begin
       b - (a + ε/4)     ≡⟨ cong (b +_) (ℚ.neg-distrib-+ a ε/4) ⟩
-      b + (- a - ε/4)   ≡⟨ sym (ℚ.+-assoc b (- a) (- ε/4)) ⟩
+      b + (- a - ε/4)   ≡⟨ ℚ.+-assoc b (- a) (- ε/4) ⟨
       ε - ε/4           ≡⟨ eps-eq a<b ⟩
-      ε * ¾             ∎
-      where open ≡-Reasoning
+      ε * ¾             ∎ where open ≡-Reasoning
   ... | right Uv = (a , v) , La , Uv , eq
     where 
     eq = begin
       (b - ε/4) - a     ≡⟨ ℚ.+-assoc b (- ε/4) (- a) ⟩
       b + (- ε/4 - a)   ≡⟨ cong (b +_)  (ℚ.+-comm (- ε/4) (- a)) ⟩
-      b + (- a - ε/4)   ≡⟨ sym (ℚ.+-assoc b (- a) (- ε/4)) ⟩
+      b + (- a - ε/4)   ≡⟨ ℚ.+-assoc b (- a) (- ε/4) ⟨
       ε - ε/4           ≡⟨ eps-eq a<b ⟩
-      ε * ¾             ∎
-      where open ≡-Reasoning
+      ε * ¾             ∎ where open ≡-Reasoning
 
 
 refine-n : ∀ n x a b → L x a → U x b → Σ[ (u , v) ∈ ℚ × ℚ ] L x u ∧ U x v ∧ v - u ≡ (b - a) * (pow n ¾)
@@ -120,7 +131,7 @@ refine-n (ℕ.suc n) x a b La Ub =
         v₂ - u₂                     ≡⟨ eq₂ ⟩
         (v₁ - u₁) * ¾               ≡⟨ cong (_* ¾) eq₁ ⟩
         (b - a) * pow n ¾ * ¾       ≡⟨ ℚ.*-assoc (b - a) (pow n ¾) ¾ ⟩
-        (b - a) * (pow n ¾ * ¾)     ≡⟨ cong ((b - a) *_) (sym (pow-r n)) ⟩
+        (b - a) * (pow n ¾ * ¾)     ≡⟨ cong ((b - a) *_) (pow-r n) ⟨
         (b - a) * pow (ℕ.suc n) ¾   ∎
   in (u₂ , v₂) , Lu₂ , Uv₂ , eq₃
 
@@ -150,8 +161,21 @@ estimate x {ε} ε>0 =
         1ℚ * ε            ≡⟨ ℚ.*-identityˡ ε ⟩ 
         ε                 ∎)
 
-  in (u , v) , Lu , Uv , v-u<ε -- uncomment this line
+  in (u , v) , Lu , Uv , v-u<ε
 
+
+------------------------------------------------------------------------
+-- Ordering
+
+data _≤ᵣ_ : ℝ → ℝ → Set₁ where
+  *≤* : ∀ {x y} → (∀ {q} → L x q → L y q) → x ≤ᵣ y
+
+data _<ᵣ_ : ℝ → ℝ → Set₁ where
+  *<* : ∀ {x y} q → U x q → L y q → x <ᵣ y
+
+
+------------------------------------------------------------------------
+-- Addition and additive inverse
 
 _+ᵣ_ : ℝ → ℝ → ℝ
 v₁ +ᵣ v₂ = real L' U' inhabited' rounded' disjoint' located'
@@ -215,11 +239,12 @@ v₁ +ᵣ v₂ = real L' U' inhabited' rounded' disjoint' located'
   disjoint' : ∀ (q : ℚ) → ¬ (L' q ∧ U' q)
   disjoint' q (((a , b) , L₁a , L₂b , q=a+b) , (c , d) , U₁c , U₂d , q=c+d) = ℚ.<⇒≢ q<q refl 
     where
-    a<c = reverse-located v₁ L₁a U₁c
-    b<d = reverse-located v₂ L₂b U₂d
-    a+b<c+d = ℚ.+-mono-< a<c b<d
-    q<c+d = subst (_< c + d) (sym q=a+b) a+b<c+d
-    q<q = subst (q <_) (sym q=c+d) q<c+d
+    q<q = begin-strict
+      q       ≡⟨ q=a+b ⟩
+      a + b   <⟨ ℚ.+-monoˡ-< b (reverse-located v₁ L₁a U₁c) ⟩
+      c + b   <⟨ ℚ.+-monoʳ-< c (reverse-located v₂ L₂b U₂d) ⟩
+      c + d   ≡⟨ q=c+d ⟨
+      q       ∎ where open ℚ.≤-Reasoning
     
   located' : ∀ {q r} → q < r → L' q ∨ U' r
   located' {q} {r} q<r = located-helper (estimate v₁ ε/2>0) (estimate v₂ ε/2>0)
@@ -243,26 +268,24 @@ v₁ +ᵣ v₂ = real L' U' inhabited' rounded' disjoint' located'
         where
         y<ε/2+x : ∀ x y → y - x < ε/2 → y < ε/2 + x
         y<ε/2+x x y y-x<ε/2 = begin-strict
-          y               ≡⟨ sym (ℚ.+-identityʳ y) ⟩
-          y + 0ℚ          ≡⟨ cong (y +_) (sym (ℚ.+-inverseˡ x)) ⟩
-          y + (- x + x)   ≡⟨ sym (ℚ.+-assoc y (- x) x) ⟩
+          y               ≡⟨ ℚ.+-identityʳ y ⟨
+          y + 0ℚ          ≡⟨ cong (y +_) (ℚ.+-inverseˡ x) ⟨
+          y + (- x + x)   ≡⟨ ℚ.+-assoc y (- x) x ⟨
           y - x + x       <⟨ ℚ.+-monoˡ-< x y-x<ε/2 ⟩
-          ε/2 + x         ∎
-          where open ℚ.≤-Reasoning
+          ε/2 + x         ∎ where open ℚ.≤-Reasoning
         b+d<r = begin-strict
           b + d                   <⟨ ℚ.+-mono-< (y<ε/2+x a b b-a<ε/2) (y<ε/2+x c d d-c<ε/2) ⟩
           (ε/2 + a) + (ε/2 + c)   ≡⟨ cong (_+ (ε/2 + c)) (ℚ.+-comm ε/2 a) ⟩
-          (a + ε/2) + (ε/2 + c)   ≡⟨ sym (ℚ.+-assoc (a + ε/2) ε/2 c) ⟩
+          (a + ε/2) + (ε/2 + c)   ≡⟨ ℚ.+-assoc (a + ε/2) ε/2 c ⟨
           a + ε/2 + ε/2 + c       ≡⟨ cong (_+ c) (ℚ.+-assoc a ε/2 ε/2) ⟩
-          a + (ε/2 + ε/2) + c     ≡⟨ cong (λ x → a + x + c) (sym (split-half ε)) ⟩
+          a + (ε/2 + ε/2) + c     ≡⟨ cong (λ x → a + x + c) (split-half ε) ⟨
           a + ε + c               ≡⟨ cong (_+ c) (ℚ.+-comm a ε) ⟩
           ε + a + c               ≡⟨ ℚ.+-assoc ε a c ⟩
           ε + (a + c)             ≤⟨ ℚ.+-monoʳ-≤ ε (ℚ.≮⇒≥ q≮a+c) ⟩
           r - q + q               ≡⟨ ℚ.+-assoc r (- q) q ⟩
           r + (- q + q)           ≡⟨ cong (r +_) (ℚ.+-inverseˡ q) ⟩
           r + 0ℚ                  ≡⟨ ℚ.+-identityʳ r ⟩
-          r ∎
-          where open ℚ.≤-Reasoning
+          r                       ∎ where open ℚ.≤-Reasoning
 
 -ᵣ_ : ℝ → ℝ
 -ᵣ v = real L' U' inhabited' rounded' disjoint' located'
@@ -346,6 +369,6 @@ v₁ +ᵣ v₂ = real L' U' inhabited' rounded' disjoint' located'
 --       ; from-cong = {!   !} 
 --       }
 
---   disjoint' = {!   !}
+--   disjoint' = {!   !} 
 --   located' : ∀ {q r} → q < r → L' q ∨ U' r
 --   located' {q} {r} q<r = {!   !}
