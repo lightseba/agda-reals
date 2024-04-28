@@ -21,9 +21,9 @@ pattern right r = inj₂ r
 -- let the computer do tedious proofs for us
 -- https://stackoverflow.com/questions/30862844/how-to-prove-there-exist-a-rational-which-is-less-than-some-rational-in-agda
 FromDec : ∀ {A : Set} → Dec A → Set
-FromDec {A = A} (yes p) = A
-FromDec         (no ¬p) = ⊤
+FromDec {A = A} (yes _) = A
+FromDec         (no _) = ⊤
 
 fromDec : ∀ {A : Set} (d : Dec A) → FromDec d
 fromDec (yes p) = p
-fromDec (no ¬p) = _
+fromDec (no _) = _
