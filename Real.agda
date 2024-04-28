@@ -1,4 +1,4 @@
-{-# OPTIONS --verbose=5 #-}
+{-# OPTIONS --safe #-}
 
 module Real where
 

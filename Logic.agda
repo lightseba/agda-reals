@@ -1,3 +1,5 @@
+{-# OPTIONS --safe #-}
+
 module Logic where
 
 open import Data.Product using (_×_)
