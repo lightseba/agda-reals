@@ -2,10 +2,10 @@
 
 module Real where
 
-open import Data.Empty.Irrelevant using (⊥-elim)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Nat.Base using (ℕ; zero; suc)
-open import Data.Rational.Base as ℚ using (ℚ; _<_; _÷_; _+_; _-_; -_; _*_; 1/_; 1ℚ; 0ℚ; ½; _⊔_; _⊓_)
-import Data.Rational.Properties as ℚ
+open import Data.Rational.Base as ℚ using (ℚ; _<_; _≤_; _÷_; _+_; _-_; -_; _*_; 1/_; 1ℚ; 0ℚ; ½; _⊔_; _⊓_)
+open import Data.Rational.Properties as ℚ using (<-cmp)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; sym; subst; module ≡-Reasoning)
 open import Data.Product using (∃-syntax; Σ-syntax; _×_; _,_)
@@ -71,7 +71,7 @@ open ℝ
 -- useful lemma
 
 reverse-located : ∀ (x : ℝ) {a b : ℚ} → L x a → U x b → a < b
-reverse-located x {a} {b} La Ub with ℚ.<-cmp a b 
+reverse-located x {a} {b} La Ub with <-cmp a b 
 ... | tri< a<b _ _ = a<b
 ... | tri≈ _ refl _ = ⊥-elim (disjoint x a (La , Ub))
 ... | tri> _ _ a>b = ⊥-elim (disjoint x a (La , Ua))
@@ -160,6 +160,14 @@ data _≤ᵣ_ : ℝ → ℝ → Set₁ where
 data _<ᵣ_ : ℝ → ℝ → Set₁ where
   *<* : ∀ {x y} q → U x q → L y q → x <ᵣ y
 
+_#ᵣ_ : ℝ → ℝ → Set₁
+x #ᵣ y = (x <ᵣ y) ∨ (y <ᵣ x)
+
+_≰ᵣ_ : ℝ → ℝ → Set₁
+x ≰ᵣ y = ¬ (x ≤ᵣ y)
+
+_≮ᵣ_ : ℝ → ℝ → Set₁
+x ≮ᵣ y = ¬ (x <ᵣ y)
 
 ------------------------------------------------------------------------
 -- Addition and additive inverse
@@ -223,7 +231,7 @@ v₁ +ᵣ v₂ = real L' U' inhabited' rounded' disjoint' located'
       ; from-cong = λ{ refl → refl } 
       }
   
-  disjoint' : ∀ (q : ℚ) → ¬ (L' q ∧ U' q)
+  disjoint' : ∀ q → ¬ (L' q ∧ U' q)
   disjoint' q (((a , b) , L₁a , L₂b , q=a+b) , (c , d) , U₁c , U₂d , q=c+d) = ℚ.<⇒≢ q<q refl 
     where
     q<q = begin-strict
@@ -316,44 +324,117 @@ v₁ +ᵣ v₂ = real L' U' inhabited' rounded' disjoint' located'
   ... | left L-r = right L-r  
   ... | right U-q = left U-q      
 
+_*ᵣ_ : ℝ → ℝ → ℝ
+v₁ *ᵣ v₂ = real L' U' inhabited' rounded' disjoint' located'
+  where
+  *-lo : ℚ → ℚ → ℚ → ℚ → ℚ
+  *-lo a b c d = (a * c) ⊓ (a * d) ⊓ (b * c) ⊓ (b * d)
+  *-hi : ℚ → ℚ → ℚ → ℚ → ℚ
+  *-hi a b c d = (a * c) ⊔ (a * d) ⊔ (b * c) ⊔ (b * d)
 
--- _*ᵣ_ : ℝ → ℝ → ℝ
--- v₁ *ᵣ v₂ = real L' U' inhabited' rounded' disjoint' located'
---   where
---   L' = λ q → Σ[ (a , b , c , d) ∈ ℚ × ℚ × ℚ × ℚ ] (L v₁ a ∧ U v₁ b ∧ L v₂ c ∧ U v₂ d ∧ q < a * c ⊓ a * d ⊓ b * c ⊓ b * d)
---   U' = λ q → Σ[ (a , b , c , d) ∈ ℚ × ℚ × ℚ × ℚ ] (L v₁ a ∧ U v₁ b ∧ L v₂ c ∧ U v₂ d ∧ a * c ⊔ a * d ⊔ b * c ⊔ b * d < q)
+  L' = λ q → Σ[ (a , b , c , d) ∈ ℚ × ℚ × ℚ × ℚ ] (L v₁ a ∧ U v₁ b ∧ L v₂ c ∧ U v₂ d ∧ q < *-lo a b c d)
+  U' = λ q → Σ[ (a , b , c , d) ∈ ℚ × ℚ × ℚ × ℚ ] (L v₁ a ∧ U v₁ b ∧ L v₂ c ∧ U v₂ d ∧ *-hi a b c d < q)
 
---   inhabited' = let (a , L₁a , b , U₁b) = inhabited v₁
---                    (c , L₂c , d , U₂d) = inhabited v₂
---                    lo = a * c ⊓ a * d ⊓ b * c ⊓ b * d
---                    hi = a * c ⊔ a * d ⊔ b * c ⊔ b * d
---                in lo - 1ℚ , (_ , L₁a , U₁b , L₂c , U₂d , q-1<q lo) ,
---                   hi + 1ℚ , (_ , L₁a , U₁b , L₂c , U₂d , q<q+1 hi)
+  inhabited' = let (a , L₁a , b , U₁b) = inhabited v₁
+                   (c , L₂c , d , U₂d) = inhabited v₂
+                   lo = *-lo a b c d
+                   hi = *-hi a b c d
+               in lo - 1ℚ , (_ , L₁a , U₁b , L₂c , U₂d , q-1<q lo) ,
+                  hi + 1ℚ , (_ , L₁a , U₁b , L₂c , U₂d , q<q+1 hi)
                   
---   rounded' : ∀ (q r : ℚ) → 
---     L' q ⇔ (∃[ r ] q < r ∧ L' r) ∧
---     U' r ⇔ (∃[ q ] q < r ∧ U' q)
---   rounded' q r = 
---     record 
---       { to = λ{ ((a , b , c , d) , L₁a , U₁b , L₂c , U₂d , q<lo) → 
---           let (a' , a<a' , L₁a') = Equivalence.to (proj₁ (rounded v₁ a a)) L₁a
---               (b' , b'<b , U₁b') = Equivalence.to (proj₂ (rounded v₁ b b)) U₁b
---               (c' , c<c' , L₂c') = Equivalence.to (proj₁ (rounded v₂ c c)) L₂c
---               (d' , d'<d , U₂d') = Equivalence.to (proj₂ (rounded v₂ d d)) U₂d
---               lo' = a' * c' ⊓ a' * d' ⊓ b' * c' ⊓ b' * d'
---           in {!   !} , {!   !} , {!   !} , L₁a' , U₁b' , L₂c' , U₂d' , {!   !} }
---       ; from = {!   !} 
---       ; to-cong = {!   !} 
---       ; from-cong = {!   !} 
---       } , 
---     record 
---       { to = {!   !} 
---       ; from = {!   !} 
---       ; to-cong = {!   !} 
---       ; from-cong = {!   !} 
---       }
+  rounded' : ∀ (q r : ℚ) → 
+    L' q ⇔ (∃[ r ] q < r ∧ L' r) ∧
+    U' r ⇔ (∃[ q ] q < r ∧ U' q)
+  rounded' q r = 
+    record 
+      { to = λ{ ((a , b , c , d) , L₁a , U₁b , L₂c , U₂d , q<lo) → 
+          let (r , q<r , r<lo) = ℚ.<-dense q<lo
+          in _ , q<r , _ , L₁a , U₁b , L₂c , U₂d , r<lo }
+      ; from = λ{ (r , q<r , (a , b , c , d) , L₁a , U₁b , L₂c , U₂d , r<lo) → 
+          let q<lo = ℚ.<-trans q<r  r<lo
+          in _ , L₁a , U₁b , L₂c , U₂d , q<lo }
+      ; to-cong = λ{ refl → refl }
+      ; from-cong = λ{ refl → refl } 
+      } , 
+    record 
+      { to = λ{ ((a , b , c , d) , L₁a , U₁b , L₂c , U₂d , hi<r) → 
+          let (q , hi<q , q<r) = ℚ.<-dense hi<r
+          in _ , q<r , _ , L₁a , U₁b , L₂c , U₂d , hi<q } 
+      ; from = λ{ (q , q<r , (a , b , c , d) , L₁a , U₁b , L₂c , U₂d , hi<q) → 
+          let hi<r = ℚ.<-trans hi<q q<r 
+          in _ , L₁a , U₁b , L₂c , U₂d , hi<r } 
+      ; to-cong = λ{ refl → refl } 
+      ; from-cong = λ{ refl → refl } 
+      }
 
---   disjoint' = {!   !} 
---   located' : ∀ {q r} → q < r → L' q ∨ U' r
---   located' {q} {r} q<r = {!   !}
+  disjoint' : ∀ q → ¬ (L' q ∧ U' q)
+  disjoint' q 
+    (((a₁ , b₁ , c₁ , d₁) , L₁a₁ , U₁b₁ , L₂c₁ , U₂d₁ , q<lo₁) , 
+    ((a₂ , b₂ , c₂ , d₂) , L₁a₂ , U₁b₂ , L₂c₂ , U₂d₂ , q>hi₂)) = ℚ.<-irrefl refl q<q
+    where
+    a₁<b₁ = reverse-located v₁ L₁a₁ U₁b₁
+    a₁<b₂ = reverse-located v₁ L₁a₁ U₁b₂
+    a₂<b₁ = reverse-located v₁ L₁a₂ U₁b₁
+    a₂<b₂ = reverse-located v₁ L₁a₂ U₁b₂
+
+    a₁<b₁⊓b₂ = <-join-⊓ a₁<b₁ a₁<b₂
+    a₂<b₁⊓b₂ = <-join-⊓ a₂<b₁ a₂<b₂
+    a₁⊔a₂<b₁⊓b₂ = >-join-⊔ a₁<b₁⊓b₂ a₂<b₁⊓b₂
+    
+    c₁<d₁ = reverse-located v₂ L₂c₁ U₂d₁
+    c₁<d₂ = reverse-located v₂ L₂c₁ U₂d₂
+    c₂<d₁ = reverse-located v₂ L₂c₂ U₂d₁
+    c₂<d₂ = reverse-located v₂ L₂c₂ U₂d₂
+
+    c₁<d₁⊓d₂ = <-join-⊓ c₁<d₁ c₁<d₂
+    c₂<d₁⊓d₂ = <-join-⊓ c₂<d₁ c₂<d₂
+    c₁⊔c₂<d₁⊓d₂ = >-join-⊔ c₁<d₁⊓d₂ c₂<d₁⊓d₂
+    
+    a' = a₁ ⊔ a₂
+    b' = b₁ ⊓ b₂
+    c' = c₁ ⊔ c₂
+    d' = d₁ ⊓ d₂
+    lo₁ = *-lo a₁ b₁ c₁ d₁
+    hi₂ = *-hi a₂ b₂ c₂ d₂
+    lo' = *-lo a' b' c' d'
+    hi' = *-hi a' b' c' d'
+
+    lo₁≤lo' : lo₁ ≤ lo'
+    lo₁≤lo' = {!   !}
+
+    hi'≤hi₂ : hi' ≤ hi₂
+    hi'≤hi₂ = {!   !}
+
+    lo'≤hi' : lo' ≤ hi'
+    lo'≤hi' = ac∙ad∙bc∙bd
+      where
+      ac∙ad = ℚ.p⊓q≤p⊔q (a' * c') (a' * d')
+      ac∙ad∙bc = ⊓-⊔-mono-≤ ac∙ad ℚ.≤-refl
+      ac∙ad∙bc∙bd = ⊓-⊔-mono-≤ ac∙ad∙bc ℚ.≤-refl 
+
+    q<q : q < q
+    q<q = begin-strict
+      q   <⟨ q<lo₁ ⟩
+      lo₁ ≤⟨ lo₁≤lo' ⟩
+      lo' ≤⟨ lo'≤hi' ⟩
+      hi' ≤⟨ hi'≤hi₂ ⟩
+      hi₂ <⟨ q>hi₂ ⟩
+      q   ∎ where open ℚ.≤-Reasoning
+    
+    -- res : ⊥
+    -- res with  ℚ.<-cmp lo₁ 0ℚ |  ℚ.<-cmp hi₂ 0ℚ
+    -- ... | tri< lo₁<0 _ _ | res2 = {!   !}
+    -- ... | tri≈  b _ | res2 = {!   !}
+    -- ... | tri> _ _ lo₁>0 | res2 = {!   !}
+
+    -- res : ⊥
+    -- res with ℚ.<-dense a₁⊔a₂<b₁⊓b₂ | ℚ.<-dense c₁⊔c₂<d₁⊓d₂
+    -- ... | x , a₁⊔a₂<x , x<b₁⊓b₂ | y , c₁⊔c₂<y , y<d₁⊓d₂ 
+    --   with ℚ.<-cmp x 0ℚ | ℚ.<-cmp y 0ℚ
+    -- ... | tri≈ _ refl _ | _ = {!   !}
+    -- ... | tri< x<0 _ _ | _ = {!   !}
+    -- ... | tri> _ _ x>0 | _ = {!   !}
+    
+  located' : ∀ {q r} → q < r → L' q ∨ U' r
+  located' {q} {r} q<r = {!   !}
  
