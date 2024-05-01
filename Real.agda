@@ -327,10 +327,10 @@ v₁ +ᵣ v₂ = real L' U' inhabited' rounded' disjoint' located'
 _*ᵣ_ : ℝ → ℝ → ℝ
 v₁ *ᵣ v₂ = real L' U' inhabited' rounded' disjoint' located'
   where
-  *-lo : ℚ → ℚ → ℚ → ℚ → ℚ
-  *-lo a b c d = (a * c) ⊓ (a * d) ⊓ (b * c) ⊓ (b * d)
-  *-hi : ℚ → ℚ → ℚ → ℚ → ℚ
-  *-hi a b c d = (a * c) ⊔ (a * d) ⊔ (b * c) ⊔ (b * d)
+  -- *-lo : ℚ → ℚ → ℚ → ℚ → ℚ
+  -- *-lo a b c d = (a * c) ⊓ (a * d) ⊓ (b * c) ⊓ (b * d)
+  -- *-hi : ℚ → ℚ → ℚ → ℚ → ℚ
+  -- *-hi a b c d = (a * c) ⊔ (a * d) ⊔ (b * c) ⊔ (b * d)
 
   L' = λ q → Σ[ (a , b , c , d) ∈ ℚ × ℚ × ℚ × ℚ ] (L v₁ a ∧ U v₁ b ∧ L v₂ c ∧ U v₂ d ∧ q < *-lo a b c d)
   U' = λ q → Σ[ (a , b , c , d) ∈ ℚ × ℚ × ℚ × ℚ ] (L v₁ a ∧ U v₁ b ∧ L v₂ c ∧ U v₂ d ∧ *-hi a b c d < q)

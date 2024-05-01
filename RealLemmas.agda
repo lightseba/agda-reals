@@ -506,7 +506,6 @@ pow-log ε@(ℚ.mkℚ +[1+ _ ] _ _) = begin-strict
 ... | right x⊔y≡y = ℚ.≤-<-trans (ℚ.≤-reflexive x⊔y≡y) q>y
 
 
-{-- 
 *-lo : ℚ → ℚ → ℚ → ℚ → ℚ
 *-lo a b c d = (a * c) ⊓ (a * d) ⊓ (b * c) ⊓ (b * d)
 *-hi : ℚ → ℚ → ℚ → ℚ → ℚ
@@ -553,6 +552,208 @@ infixl 6 _∘_
 *-hi-neg : ∀ a b c d → *-hi a b c d ≡ *-hi (- b) (- a) (- d) (- c)
 *-hi-neg a b c d = *-lo-hi-neg a b c d ℚ.⊔-assoc ℚ.⊔-comm
 
+
+-- case where 0 < a < b
+interval-*' : ∀ {a b c d} → a < b → c < d → 0ℚ < a → *-lo a b c d < *-hi a b c d
+interval-*' {a} {b} {c} {d} a<b c<d a>0 
+  with c ℚ.>? 0ℚ | d ℚ.<? 0ℚ 
+... | yes c>0 | _ = lo<hi -- [ac, bd]
+  where
+  instance
+    _ = ℚ.positive a>0
+    _ = ℚ.positive (ℚ.<-trans a>0 a<b)
+    _ = ℚ.positive c>0
+    _ = ℚ.positive (ℚ.<-trans c>0 c<d)
+
+  ac<bc = ℚ.*-monoˡ-<-pos c a<b
+  ac<ad = ℚ.*-monoʳ-<-pos a c<d
+  bc<bd = ℚ.*-monoʳ-<-pos b c<d
+  ad<bd = ℚ.*-monoˡ-<-pos d a<b
+  ac<bd = ℚ.<-trans ac<bc bc<bd
+  
+  lo<hi : *-lo a b c d < *-hi a b c d
+  lo<hi = begin-strict
+    *-lo a b c d ≡⟨ cong (λ x → x ⊓ (b * c) ⊓ (b * d)) (ℚ.p≤q⇒p⊓q≡p (ℚ.<⇒≤ ac<ad)) ⟩
+    (a * c) ⊓ (b * c) ⊓ (b * d)             ≡⟨ cong (_⊓ (b * d)) (ℚ.p≤q⇒p⊓q≡p (ℚ.<⇒≤ ac<bc)) ⟩
+    (a * c) ⊓ (b * d)                       ≡⟨ ℚ.p≤q⇒p⊓q≡p (ℚ.<⇒≤ ac<bd) ⟩
+    a * c                                   <⟨ ac<bd ⟩
+    b * d                                   ≡⟨ ℚ.p≤q⇒p⊔q≡q (ℚ.<⇒≤ ac<bd) ⟨
+    (a * c) ⊔ (b * d)                       ≡⟨ cong ((a * c) ⊔_) (ℚ.p≤q⇒p⊔q≡q (ℚ.<⇒≤ ad<bd)) ⟨
+    (a * c) ⊔ ((a * d) ⊔ (b * d))           ≡⟨ ℚ.⊔-assoc (a * c) (a * d) (b * d) ⟨
+    (a * c) ⊔ (a * d) ⊔ (b * d)             ≡⟨ cong ((a * c) ⊔ (a * d) ⊔_) (ℚ.p≤q⇒p⊔q≡q (ℚ.<⇒≤ bc<bd)) ⟨
+    (a * c) ⊔ (a * d) ⊔ ((b * c) ⊔ (b * d)) ≡⟨ ℚ.⊔-assoc ((a * c) ⊔ (a * d)) (b * c) (b * d) ⟨
+    *-hi a b c d                            ∎ where open ℚ.≤-Reasoning
+    
+... | _ | yes d<0 = lo<hi -- [bc, ad]
+  where
+  instance
+    _ = ℚ.positive a>0
+    _ = ℚ.positive (ℚ.<-trans a>0 a<b)
+    _ = ℚ.negative d<0
+    _ = ℚ.negative (ℚ.<-trans c<d d<0)
+
+  bc<ac = ℚ.*-monoˡ-<-neg c a<b
+  bc<bd = ℚ.*-monoʳ-<-pos b c<d
+  ac<ad = ℚ.*-monoʳ-<-pos a c<d
+  bd<ad = ℚ.*-monoˡ-<-neg d a<b
+  bc<ad = ℚ.<-trans bc<ac ac<ad
+
+  lo<hi : *-lo a b c d < *-hi a b c d
+  lo<hi = begin-strict
+    *-lo a b c d                            ≡⟨ ℚ.⊓-assoc ((a * c) ⊓ (a * d)) (b * c) (b * d) ⟩
+    (a * c) ⊓ (a * d) ⊓ ((b * c) ⊓ (b * d)) ≡⟨ cong ((a * c) ⊓ (a * d) ⊓_) (ℚ.p≤q⇒p⊓q≡p (ℚ.<⇒≤ bc<bd)) ⟩
+    (a * c) ⊓ (a * d) ⊓ (b * c)             ≡⟨ ℚ.⊓-assoc (a * c)  (a * d)  (b * c) ⟩
+    (a * c) ⊓ ((a * d) ⊓ (b * c))           ≡⟨ cong ((a * c) ⊓_) (ℚ.p≥q⇒p⊓q≡q (ℚ.<⇒≤ bc<ad)) ⟩
+    (a * c) ⊓ (b * c)                       ≡⟨ ℚ.p≥q⇒p⊓q≡q (ℚ.<⇒≤ bc<ac) ⟩
+    b * c                                   <⟨ bc<ad ⟩
+    a * d                                   ≡⟨ ℚ.p≤q⇒p⊔q≡q (ℚ.<⇒≤ ac<ad) ⟨
+    (a * c) ⊔ (a * d)                       ≡⟨ cong ((a * c) ⊔_) (ℚ.p≥q⇒p⊔q≡p (ℚ.<⇒≤ bd<ad)) ⟨
+    (a * c) ⊔ ((a * d) ⊔ (b * d))           ≡⟨ ℚ.⊔-assoc (a * c) (a * d) (b * d)  ⟨
+    (a * c) ⊔ (a * d) ⊔ (b * d)             ≡⟨ cong (λ x → (a * c) ⊔ x ⊔ (b * d)) (ℚ.p≥q⇒p⊔q≡p (ℚ.<⇒≤ bc<ad))  ⟨
+    (a * c) ⊔ ((a * d) ⊔ (b * c)) ⊔ (b * d) ≡⟨ cong (_⊔ (b * d)) (ℚ.⊔-assoc (a * c) (a * d) (b * c))  ⟨
+    *-hi a b c d                            ∎ where open ℚ.≤-Reasoning
+
+... | no ¬c>0 | no ¬d<0 = lo<hi -- [bc , bd]
+  where
+  c≤0 = ℚ.≮⇒≥ ¬c>0
+  d≥0 = ℚ.≮⇒≥ ¬d<0
+  instance
+    _ = ℚ.positive a>0
+    _ = ℚ.positive (ℚ.<-trans a>0 a<b)
+    _ = ℚ.nonNegative d≥0
+    _ = ℚ.nonPositive c≤0
+  
+  bc<bd = ℚ.*-monoʳ-<-pos b c<d
+  bc≤ac = ℚ.*-monoʳ-≤-nonPos c (ℚ.<⇒≤ a<b)
+  ac<ad = ℚ.*-monoʳ-<-pos a c<d
+  bc<ad = ℚ.≤-<-trans bc≤ac ac<ad
+  ad≤bd = ℚ.*-monoʳ-≤-nonNeg d (ℚ.<⇒≤ a<b) -- name of ℚ.*-monoʳ-≤-nonNeg is wrong
+  ac<bd = ℚ.<-≤-trans ac<ad ad≤bd
+
+  lo<hi : *-lo a b c d < *-hi a b c d
+  lo<hi = begin-strict
+    *-lo a b c d                            ≡⟨ ℚ.⊓-assoc ((a * c) ⊓ (a * d)) (b * c) (b * d) ⟩
+    (a * c) ⊓ (a * d) ⊓ ((b * c) ⊓ (b * d)) ≡⟨ cong ((a * c) ⊓ (a * d) ⊓_) (ℚ.p≤q⇒p⊓q≡p (ℚ.<⇒≤ bc<bd)) ⟩
+    (a * c) ⊓ (a * d) ⊓ (b * c)             ≡⟨ ℚ.⊓-assoc (a * c)  (a * d)  (b * c) ⟩
+    (a * c) ⊓ ((a * d) ⊓ (b * c))           ≡⟨ cong ((a * c) ⊓_) (ℚ.p≥q⇒p⊓q≡q (ℚ.<⇒≤ bc<ad)) ⟩
+    (a * c) ⊓ (b * c)                       ≡⟨ ℚ.p≥q⇒p⊓q≡q bc≤ac ⟩
+    b * c                                   <⟨ bc<bd ⟩
+    b * d                                   ≡⟨ ℚ.p≤q⇒p⊔q≡q (ℚ.<⇒≤ ac<bd) ⟨
+    (a * c) ⊔ (b * d)                       ≡⟨ cong ((a * c) ⊔_) (ℚ.p≤q⇒p⊔q≡q ad≤bd) ⟨
+    (a * c) ⊔ ((a * d) ⊔ (b * d))           ≡⟨ ℚ.⊔-assoc (a * c) (a * d) (b * d) ⟨
+    (a * c) ⊔ (a * d) ⊔ (b * d)             ≡⟨ cong ((a * c) ⊔ (a * d) ⊔_) (ℚ.p≤q⇒p⊔q≡q (ℚ.<⇒≤ bc<bd)) ⟨
+    (a * c) ⊔ (a * d) ⊔ ((b * c) ⊔ (b * d)) ≡⟨ ℚ.⊔-assoc ((a * c) ⊔ (a * d)) (b * c) (b * d) ⟨
+    *-hi a b c d                            ∎ where open ℚ.≤-Reasoning
+
+interval-* : ∀ {a b c d} → a < b → c < d → *-lo a b c d < *-hi a b c d
+interval-* {a} {b} {c} {d} a<b c<d 
+  with a ℚ.>? 0ℚ | c ℚ.>? 0ℚ | b ℚ.<? 0ℚ | d ℚ.<? 0ℚ 
+... | yes a>0 | _ | _ | _ = interval-*' a<b c<d a>0
+... | _ | yes c>0 | _ | _ = begin-strict 
+  *-lo a b c d  ≡⟨ *-lo-comm a b c d ⟩ 
+  *-lo c d a b  <⟨ interval-*' c<d a<b c>0 ⟩ 
+  *-hi c d a b  ≡⟨ *-hi-comm a b c d ⟨
+  *-hi a b c d  ∎ where open ℚ.≤-Reasoning 
+... | _ | _ | yes b<0 | _ = begin-strict 
+  *-lo a b c d                  ≡⟨ *-lo-neg a b c d ⟩ 
+  *-lo (- b) (- a) (- d) (- c)  <⟨ interval-*' (ℚ.neg-antimono-< a<b) (ℚ.neg-antimono-< c<d) (ℚ.neg-antimono-< b<0) ⟩ 
+  *-hi (- b) (- a) (- d) (- c)  ≡⟨ *-hi-neg a b c d ⟨
+  *-hi a b c d                  ∎ where open ℚ.≤-Reasoning 
+... | _ | _ | _ | yes d<0 = begin-strict 
+  *-lo a b c d                  ≡⟨ *-lo-comm a b c d ⟩ 
+  *-lo c d a b                  ≡⟨ *-lo-neg c d a b ⟩ 
+  *-lo (- d) (- c) (- b) (- a)  <⟨ interval-*' (ℚ.neg-antimono-< c<d) (ℚ.neg-antimono-< a<b) (ℚ.neg-antimono-< d<0) ⟩ 
+  *-hi (- d) (- c) (- b) (- a)  ≡⟨ *-hi-neg c d a b ⟨
+  *-hi c d a b                  ≡⟨ *-hi-comm a b c d ⟨
+  *-hi a b c d                  ∎ where open ℚ.≤-Reasoning 
+... | no ¬a>0 | no ¬c>0 | no ¬b<0 | no ¬d<0 = lo<hi -- [ad ⊓ bc, ac ⊔ bd]
+  where
+  a≤0 = ℚ.≮⇒≥ ¬a>0
+  b≥0 = ℚ.≮⇒≥ ¬b<0
+  c≤0 = ℚ.≮⇒≥ ¬c>0
+  d≥0 = ℚ.≮⇒≥ ¬d<0
+  instance
+    _ = ℚ.nonPositive a≤0
+    _ = ℚ.nonNegative b≥0
+    _ = ℚ.nonPositive c≤0
+    _ = ℚ.nonNegative d≥0
+
+  ad≤0 = begin
+    a * d   ≤⟨ ℚ.*-monoʳ-≤-nonNeg d a≤0 ⟩
+    0ℚ * d  ≡⟨ ℚ.*-zeroˡ d ⟩
+    0ℚ      ∎ where open ℚ.≤-Reasoning
+  ac≥0 = begin
+    0ℚ      ≡⟨ ℚ.*-zeroˡ c ⟨
+    0ℚ * c  ≤⟨ ℚ.*-monoʳ-≤-nonPos c a≤0 ⟩
+    a * c   ∎ where open ℚ.≤-Reasoning
+  bc≤0 = begin
+    b * c   ≤⟨ ℚ.*-monoˡ-≤-nonNeg b c≤0 ⟩
+    b * 0ℚ  ≡⟨ ℚ.*-zeroʳ b ⟩
+    0ℚ      ∎ where open ℚ.≤-Reasoning
+  bd≥0 = begin
+    0ℚ      ≡⟨ ℚ.*-zeroˡ d ⟨
+    0ℚ * d  ≤⟨ ℚ.*-monoʳ-≤-nonNeg d b≥0 ⟩
+    b * d   ∎ where open ℚ.≤-Reasoning
+    
+  lo = *-lo a b c d
+  hi = *-hi a b c d
+
+  ac⊓ad≤0 = ℚ.p≤q⇒r⊓p≤q (a * c) ad≤0
+  ac⊓ad⊓bc≤0 = ℚ.p≤q⇒p⊓r≤q (b * c) ac⊓ad≤0
+  lo≤0 = ℚ.p≤q⇒p⊓r≤q (b * d) ac⊓ad⊓bc≤0
+
+  ac⊔ad≥0 = ℚ.p≤q⇒p≤q⊔r (a * d) ac≥0
+  ac⊔ad⊔bc≥0 = ℚ.p≤q⇒p≤q⊔r (b * c) ac⊔ad≥0
+  hi≥0 = ℚ.p≤q⇒p≤q⊔r (b * d) ac⊔ad⊔bc≥0
+
+  lo<hi : lo < hi 
+  lo<hi with lo ℚ.<? 0ℚ | hi ℚ.>? 0ℚ 
+  ... | yes lo<0 | _ = ℚ.<-≤-trans lo<0 hi≥0
+  ... | _ | yes hi>0 = ℚ.≤-<-trans lo≤0 hi>0
+  ... | no ¬lo<0 | no ¬hi>0 = ⊥-elim (ℚ.<-irrefl refl 0<0)
+    where
+    lo≡0 = ℚ.≤-antisym lo≤0 (ℚ.≮⇒≥ ¬lo<0)
+    hi≡0 = ℚ.≤-antisym (ℚ.≮⇒≥ ¬hi>0) hi≥0
+
+    0<0 : 0ℚ < 0ℚ
+    0<0 with a ℚ.<? 0ℚ
+    ... | yes a<0 = begin-strict
+      0ℚ    ≡⟨ lo≡0 ⟨
+      lo    ≤⟨ lo≤ad ⟩
+      a * d <⟨ ad<ac ⟩
+      a * c ≤⟨ ac≤hi ⟩
+      hi    ≡⟨ hi≡0 ⟩
+      0ℚ    ∎
+      where 
+      open ℚ.≤-Reasoning
+      instance _ = ℚ.negative a<0
+      ad<ac = ℚ.*-monoʳ-<-neg a c<d
+      
+      ac⊓ad≤ad = ℚ.p⊓q≤q (a * c) (a * d)
+      ac⊓ad⊓bc≤ad = ℚ.p≤q⇒p⊓r≤q (b * c) ac⊓ad≤ad
+      lo≤ad = ℚ.p≤q⇒p⊓r≤q (b * d) ac⊓ad⊓bc≤ad
+      
+      ac≤ac⊔ad = ℚ.p≤p⊔q (a * c) (a * d)
+      ac≤ac⊔ad⊔bc = ℚ.p≤q⇒p≤q⊔r (b * c) ac≤ac⊔ad
+      ac≤hi = ℚ.p≤q⇒p≤q⊔r (b * d) ac≤ac⊔ad⊔bc
+    ... | no ¬a<0 = begin-strict
+      0ℚ    ≡⟨ lo≡0 ⟨
+      lo    ≤⟨ lo≤bc ⟩
+      b * c <⟨ bc<bd ⟩
+      b * d ≤⟨ bd≤hi ⟩
+      hi    ≡⟨ hi≡0 ⟩
+      0ℚ    ∎  
+      where
+      open ℚ.≤-Reasoning
+      a≡0 = ℚ.≤-antisym a≤0 (ℚ.≮⇒≥ ¬a<0)
+      b>0 = subst (_< b) a≡0 a<b 
+      instance _ = ℚ.positive b>0
+      bc<bd = ℚ.*-monoʳ-<-pos b c<d
+      
+      ac⊓ad⊓bc≤bc = ℚ.p⊓q≤q ((a * c) ⊓ (a * d)) (b * c)
+      lo≤bc = ℚ.p≤q⇒p⊓r≤q (b * d) ac⊓ad⊓bc≤bc
+      bd≤hi = ℚ.p≤q⊔p (a * c ⊔ a * d ⊔ b * c) (b * d) 
+
 data Interval : Set where
   int : ∀ a b → a < b → Interval
 
@@ -562,78 +763,17 @@ Iʳ : Interval → ℚ
 Iʳ (int a b a<b) = b
 
 infix 4 _⊂_
+-- technically this isn't exactly contains, since we dont allow matching endpoints
+-- oh well.
 data _⊂_ : Interval → Interval → Set where
   cont : ∀ {i j} → Iˡ j < Iˡ i → Iʳ i < Iʳ j → i ⊂ j
 
--- case where 0 ≤ a < b
-interval-*' : ∀ {a b c d} → a < b → c < d → 0ℚ ≤ a → *-lo a b c d < *-hi a b c d
-interval-*' {a} {b} {c} {d} a<b c<d a≥0 
-  with 0ℚ ℚ.≤? c | d ℚ.≤? 0ℚ 
-... | yes c≥0 | _ = {!   !} -- [ac, bd]
+infixl 6 _*ᴵ_
+_*ᴵ_ : Interval → Interval → Interval
+int a b a<b *ᴵ int c d c<d = int lo hi (interval-* a<b c<d)
   where
-  instance
-    _ = ℚ.nonNegative a≥0
-    _ = ℚ.positive (ℚ.≤-<-trans a≥0 a<b)
-    _ = ℚ.nonNegative c≥0
-    _ = ℚ.positive (ℚ.≤-<-trans c≥0 c<d)
+  lo = *-lo a b c d
+  hi = *-hi a b c d
 
-  ac≤bc : a * c ≤ b * c
-  ac≤ad : a * c ≤ a * d
-  bc<bd : b * c < b * d
-  ad<bd : a * d < b * d
-  ac<bd : a * c < b * d
-  ac≤bc = ℚ.*-monoʳ-≤-nonNeg c (ℚ.<⇒≤ a<b)
-  ac≤ad = ℚ.*-monoˡ-≤-nonNeg a (ℚ.<⇒≤ c<d)
-  bc<bd = ℚ.*-monoʳ-<-pos b c<d
-  ad<bd = ℚ.*-monoˡ-<-pos d a<b
-  ac<bd = ℚ.≤-<-trans ac≤bc bc<bd
-  -- (a * c) ⊓ (a * d) ⊓ (b * c) ⊓ (b * d)
-
-  ac≤ac⊓ad : a * c ≤ (a * c) ⊓ (a * d)
-  ac≤ac⊓ad = ℚ.⊓-glb ℚ.≤-refl ac≤ad
-  
-  lo<hi : *-lo a b c d < *-hi a b c d
-  lo<hi = begin-strict
-    *-lo a b c d ≡⟨ {!   !} ⟩
-    a * c <⟨ {!   !} ⟩
-    b * d ≡⟨ {!   !} ⟩
-    *-hi a b c d ∎ where open ℚ.≤-Reasoning
-
-  
-... | _ | yes d≤0 = {!   !} -- [bc, ad]
-... | no ¬c≥0 | no ¬d≤0 = {!   !} -- [bc , bd]
-
-interval-* : ∀ {a b c d} → a < b → c < d → *-lo a b c d < *-hi a b c d
-interval-* {a} {b} {c} {d} a<b c<d 
-  with 0ℚ ℚ.≤? a | 0ℚ ℚ.≤? c | b ℚ.≤? 0ℚ | d ℚ.≤? 0ℚ 
-... | yes a≥0 | _ | _ | _ = interval-*' a<b c<d a≥0
-... | _ | yes c≥0 | _ | _ = begin-strict 
-  *-lo a b c d  ≡⟨ *-lo-comm a b c d ⟩ 
-  *-lo c d a b  <⟨ interval-*' c<d a<b c≥0 ⟩ 
-  *-hi c d a b  ≡⟨ *-hi-comm a b c d ⟨
-  *-hi a b c d  ∎ where open ℚ.≤-Reasoning 
-... | _ | _ | yes b≤0 | _ = begin-strict 
-  *-lo a b c d                  ≡⟨ *-lo-neg a b c d ⟩ 
-  *-lo (- b) (- a) (- d) (- c)  <⟨ interval-*' (ℚ.neg-antimono-< a<b) (ℚ.neg-antimono-< c<d) (ℚ.neg-antimono-≤ b≤0) ⟩ 
-  *-hi (- b) (- a) (- d) (- c)  ≡⟨ *-hi-neg a b c d ⟨
-  *-hi a b c d                  ∎ where open ℚ.≤-Reasoning 
-... | _ | _ | _ | yes d≤0 = begin-strict 
-  *-lo a b c d                  ≡⟨ *-lo-comm a b c d ⟩ 
-  *-lo c d a b                  ≡⟨ *-lo-neg c d a b ⟩ 
-  *-lo (- d) (- c) (- b) (- a)  <⟨ interval-*' (ℚ.neg-antimono-< c<d) (ℚ.neg-antimono-< a<b) (ℚ.neg-antimono-≤ d≤0) ⟩ 
-  *-hi (- d) (- c) (- b) (- a)  ≡⟨ *-hi-neg c d a b ⟨
-  *-hi c d a b                  ≡⟨ *-hi-comm a b c d ⟨
-  *-hi a b c d                  ∎ where open ℚ.≤-Reasoning 
-... | no ¬a≥0 | no ¬c≥0 | no ¬b≤0 | no ¬d≤0 = {!   !}
-  where
-  a<0 = ℚ.≰⇒> ¬a≥0
-  b>0 = ℚ.≰⇒> ¬b≤0
-  c<0 = ℚ.≰⇒> ¬c≥0
-  d>0 = ℚ.≰⇒> ¬d≤0
-  instance
-    a-neg = ℚ.negative a<0
-    b-pos = ℚ.positive b>0
-    c-neg = ℚ.negative c<0
-    d-pos = ℚ.positive d>0
-  
---}
+-- contains : ∀ {i i' j} → i' ⊂ i → i' *ᴵ j ⊂ i *ᴵ j
+-- contains = {!   !}
