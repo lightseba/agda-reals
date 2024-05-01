@@ -4,7 +4,7 @@ module Real where
 
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Nat.Base using (ℕ; zero; suc)
-open import Data.Rational.Base as ℚ using (ℚ; _<_; _≤_; _>_; _÷_; _+_; _-_; -_; _*_; 1/_; 1ℚ; 0ℚ; ½; _⊔_; _⊓_)
+open import Data.Rational.Base as ℚ using (ℚ; _<_; _≤_; _÷_; _+_; _-_; -_; _*_; 1/_; 1ℚ; 0ℚ; ½; _⊔_; _⊓_)
 open import Data.Rational.Properties as ℚ using (<-cmp)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; sym; subst; module ≡-Reasoning)
@@ -16,91 +16,47 @@ open import Relation.Nullary using (¬_; yes; no)
 open import Logic using (_∨_; _∧_; left; right; _,_; proj₁; proj₂)
 open import RealLemmas
 
-open import Data.Sum.Base using (map)
--- open import Function.Base using (_∘_; _∘′_; _∘₂_; _$_; flip)
-
 ------------------------------------------------------------------------
 -- Types
 
-ℚ⁺ : Set
-ℚ⁺ = ∃[ q ] q > 0ℚ
-
-un-+ : ℚ⁺ → ℚ
-un-+ (q , q>0) = q
-
-makeℚ⁺ : ∀ q → q > 0ℚ → ℚ⁺ -- just needed for +-refl
-makeℚ⁺ q q>0 = q , q>0
-
-+-refl : ∀ {p} {p>0₁ p>0₂ : p > 0ℚ} → makeℚ⁺ p p>0₁ ≡ makeℚ⁺ p p>0₂
-+-refl {p} {p>0₁} {p>0₂} = cong (p ,_) (<-equalityℚ p>0₁ p>0₂)
-
-infix 4 _<⁺_
-data _<⁺_ : ℚ⁺ → ℚ⁺ → Set where
-  *<* : ∀ {p q} → un-+ p < un-+ q → p <⁺ q
-
-un-<⁺ : ∀ {p q} → p <⁺ q → un-+ p < un-+ q
-un-<⁺ (*<* p<q) = p<q
-
-record ℝ⁺ : Set₁ where
+record ℝ : Set₁ where
   constructor real
   field
-    L U : ℚ⁺ → Set
+    L U : ℚ → Set
     inhabited : ∃[ q ] (L q) ∧ ∃[ q ] (U q) 
-    rounded : ∀ q r → 
-      L q ⇔ (∃[ r ] q <⁺ r ∧ L r) ∧
-      U r ⇔ (∃[ q ] q <⁺ r ∧ U q) --- flipped to make it a little easier
-    disjoint : ∀ q → ¬ (L q ∧ U q)
-    located : ∀ {q r} → q <⁺ r → L q ∨ U r
+    rounded : ∀ (q r : ℚ) → 
+      L q ⇔ (∃[ r ] q < r ∧ L r) ∧
+      U r ⇔ (∃[ q ] q < r ∧ U q) --- flipped to make it a little easier
+    disjoint : ∀ (q : ℚ) → ¬ (L q ∧ U q)
+    located : ∀ {q r} → q < r → L q ∨ U r
 
-data ℝ : Set₁ where
-  posℝ : ℝ⁺ → ℝ
-  negℝ : ℝ⁺ → ℝ
-  zeroℝ : ℝ
-
-open ℝ⁺
 open ℝ
 
 ------------------------------------------------------------------------
 -- Construction
 
-ℚ⁺→ℝ⁺ : ℚ⁺ → ℝ⁺
-ℚ⁺→ℝ⁺ +x@(x , x>0) = record 
-  { L = λ r → r <⁺ +x
-  ; U = λ r → +x <⁺ r
-  ; inhabited = 
-      let (lo , lo>0 , lo<x) = ℚ.<-dense x>0
-          x+1>0 = ℚ.<-trans x>0 (q<q+1 x)
-      in (lo , lo>0) , *<* lo<x , (x + 1ℚ , x+1>0) , *<* (q<q+1 x)
-  ; rounded = λ (q , q>0) (r , r>0) → 
+ℚ→ℝ : ℚ → ℝ
+ℚ→ℝ q₀ = record 
+  { L = λ r → r < q₀
+  ; U = λ r → q₀ < r
+  ; inhabited = q₀ - 1ℚ , q-1<q q₀ , q₀ + 1ℚ , q<q+1 q₀
+  ; rounded = λ _ _ → 
     record 
-      { to = λ{ (*<* q<x) → 
-          let (z , q<z , z<x) = ℚ.<-dense q<x
-              z>0 = ℚ.<-trans q>0 q<z
-          in (z , z>0) , *<* q<z , *<* z<x }
-      ; from = λ{ (_ , *<* q<z , *<* z<x) → *<* (ℚ.<-trans q<z z<x) }
-      ; to-cong = λ{ refl → refl }
-      ; from-cong = λ{ refl → refl }
-      } , 
-    record 
-      { to = λ{ (*<* x<r) → 
-          let (z , x<z , z<r) = ℚ.<-dense x<r
-              z>0 = ℚ.<-trans x>0 x<z
-          in (z , z>0) , *<* z<r , *<* x<z }
-      ; from = λ{ (_ , (*<* z<r) , (*<* x<z)) → *<* (ℚ.<-trans x<z z<r) }
+      { to = ℚ.<-dense 
+      ; from = λ{ (_ , q<x , x<q₀) → ℚ.<-trans q<x x<q₀ } 
       ; to-cong = λ{ refl → refl } 
       ; from-cong = λ{ refl → refl } 
-      } 
-  ; disjoint = λ{ _ ((*<* q<x) , (*<* x<q)) → ℚ.<-irrefl refl (ℚ.<-trans q<x x<q) }
-  ; located = λ{ (*<* q<r) → map *<* *<* (<-weak-linearity x q<r) }
+      } , 
+    record 
+      { to = λ q₀<r → let (z , q₀<z , z<r) = ℚ.<-dense q₀<r
+                      in z , z<r , q₀<z 
+      ; from = λ{ (_ , q₀<x , x<r) → ℚ.<-trans  x<r  q₀<x} 
+      ; to-cong = λ{ refl → refl } 
+      ; from-cong = λ{ refl → refl } 
+      }
+  ; disjoint = λ{ _ (q<q₀ , q₀<q) → ℚ.<-irrefl refl (ℚ.<-trans q<q₀ q₀<q) } 
+  ; located = <-weak-linearity q₀
   }
-
-
-ℚ→ℝ : ℚ → ℝ
-ℚ→ℝ q with ℚ.<-cmp q 0ℚ 
-... | tri< q<0 _ _ = negℝ (ℚ⁺→ℝ⁺ ((- q) , ℚ.neg-antimono-< q<0))
-... | tri≈ _ q=0 _ = zeroℝ
-... | tri> _ _ q>0 = posℝ (ℚ⁺→ℝ⁺ (q , q>0))
-
 
 ------------------------------------------------------------------------
 -- Constants
@@ -114,63 +70,37 @@ open ℝ
 ------------------------------------------------------------------------
 -- useful lemma
 
-
-reverse-located : ∀ x {a b} → L x a → U x b → un-+ a < un-+ b
-reverse-located x {(a , a>0)} {(b , b>0)} La Ub with <-cmp a b
+reverse-located : ∀ (x : ℝ) {a b : ℚ} → L x a → U x b → a < b
+reverse-located x {a} {b} La Ub with <-cmp a b 
 ... | tri< a<b _ _ = a<b
-... | tri≈ _ refl _ = ⊥-elim (disjoint x (a , a>0) (La , Ua))
-  where Ua = subst (U x) +-refl Ub 
-... | tri> _ _ a>b = ⊥-elim (disjoint x (a , a>0) (La , Ua))
-  where Ua = Equivalence.from (proj₂ (rounded x (a , a>0) (a , a>0))) (_ , *<* a>b , Ub)
+... | tri≈ _ refl _ = ⊥-elim (disjoint x a (La , Ub))
+... | tri> _ _ a>b = ⊥-elim (disjoint x a (La , Ua))
+  where Ua = Equivalence.from (proj₂ (rounded x a a)) (_ , a>b , Ub)
 
 
 ------------------------------------------------------------------------
 -- Estimate a real within arbitary ε
 
 private
-  refine : ∀ x a b → L x a → U x b → Σ[ (u , v) ∈ ℚ⁺ × ℚ⁺ ] (L x u ∧ U x v ∧ un-+ v - un-+ u ≡ (un-+ b - un-+ a) * ¾)
-  refine x +a@(a , a>0) +b@(b , b>0) La Ub = res
+  refine : ∀ x a b → L x a → U x b → Σ[ (u , v) ∈ ℚ × ℚ ] (L x u ∧ U x v ∧ v - u ≡ (b - a) * ¾)
+  refine x a b La Ub = res
     where
     ε = b - a
     ε/4 = ε * ¼
     u = a + ε/4
     v = b - ε/4
     a<b = reverse-located x La Ub
-    ε>0 = a<b→0<b-a a<b
-    hrm : a + ε * ¾ ≡ v
-    hrm = begin
-      a + ε * ¾           ≡⟨ cong (a +_) (eps-eq ε) ⟨
-      a + (ε - ε/4)       ≡⟨ ℚ.+-assoc a ε (- ε/4) ⟨
-      a + (b - a) - ε/4   ≡⟨ cong (λ r → a + r - ε/4) (ℚ.+-comm b (- a)) ⟩
-      a + (- a + b) - ε/4 ≡⟨ cong (_- ε/4) (ℚ.+-assoc a (- a) b) ⟨
-      a - a + b - ε/4     ≡⟨ cong (λ r → r + b - ε/4) (ℚ.+-inverseʳ a) ⟩
-      0ℚ + b - ε/4        ≡⟨ cong (_- ε/4) (ℚ.+-identityˡ b) ⟩
-      v                   ∎ where open ≡-Reasoning 
-    instance
-      _ = ℚ.positive a>0
-      _ = ℚ.positive b>0
-      _ = ℚ.positive ε>0
-      _ = pos*pos⇒pos ε ¼
-      _ = pos*pos⇒pos ε ¾
-      _ = pos+pos⇒pos a ε/4
-      v-pos' : ℚ.Positive (a + (ε * ¾))
-      v-pos' = pos+pos⇒pos a (ε * ¾)
-      _ = subst ℚ.Positive hrm v-pos'
-    u>0 = ℚ.positive⁻¹ u
-    v>0 = ℚ.positive⁻¹ v
-    +u +v : ℚ⁺
-    +u = u , u>0
-    +v = v , v>0
-    res : Σ[ (u , v) ∈ ℚ⁺ × ℚ⁺ ] (L x u ∧ U x v ∧ un-+ v - un-+ u ≡ (b - a) * ¾)
-    res with located x {+u} {+v} (*<* (refine-u<v a<b))
-    ... | left Lu = (+u , +b) ,  Lu , Ub , eq
+
+    res : Σ[ (u , v) ∈ ℚ × ℚ ] (L x u ∧ U x v ∧ v - u ≡ (b - a) * ¾)
+    res with located x (u<v a<b)
+    ... | left Lu = (u , b) , Lu , Ub , eq
       where
       eq = begin
         b - (a + ε/4)     ≡⟨ cong (b +_) (ℚ.neg-distrib-+ a ε/4) ⟩
         b + (- a - ε/4)   ≡⟨ ℚ.+-assoc b (- a) (- ε/4) ⟨
         ε - ε/4           ≡⟨ eps-eq ε ⟩
         ε * ¾             ∎ where open ≡-Reasoning
-    ... | right Uv = (+a , +v) , La , Uv , eq
+    ... | right Uv = (a , v) , La , Uv , eq
       where 
       eq = begin
         (b - ε/4) - a     ≡⟨ ℚ.+-assoc b (- ε/4) (- a) ⟩
@@ -180,23 +110,23 @@ private
         ε * ¾             ∎ where open ≡-Reasoning
 
 
-  refine-n : ∀ n x a b → L x a → U x b → Σ[ (u , v) ∈ ℚ⁺ × ℚ⁺ ] L x u ∧ U x v ∧ un-+ v - un-+ u ≡ (un-+ b - un-+ a) * (pow n ¾)
-  refine-n zero _ (a , _) (b , _) La Ub = _ , La , Ub , sym (ℚ.*-identityʳ (b - a))
-  refine-n (suc n) x +a@(a , a>0) +b@(b , b>0) La Ub = 
-    let ((+u₁@(u₁ , u₁>0) , +v₁@(v₁ , v₁>0)) , Lu₁ , Uv₁ , eq₁) = refine-n n x +a +b La Ub
-        ((+u₂@(u₂ , u₂>0) , +v₂@(v₂ , v₂>0)) , Lu₂ , Uv₂ , eq₂) = refine x +u₁ +v₁ Lu₁ Uv₁
+  refine-n : ∀ n x a b → L x a → U x b → Σ[ (u , v) ∈ ℚ × ℚ ] L x u ∧ U x v ∧ v - u ≡ (b - a) * (pow n ¾)
+  refine-n zero _ a b La Ub = _ , La , Ub , sym (ℚ.*-identityʳ (b - a))
+  refine-n (suc n) x a b La Ub = 
+    let ((u₁ , v₁) , Lu₁ , Uv₁ , eq₁) = refine-n n x a b La Ub
+        ((u₂ , v₂) , Lu₂ , Uv₂ , eq₂) = refine x u₁ v₁ Lu₁ Uv₁
         eq₃ = let open ≡-Reasoning in (begin
           v₂ - u₂                     ≡⟨ eq₂ ⟩
           (v₁ - u₁) * ¾               ≡⟨ cong (_* ¾) eq₁ ⟩
           (b - a) * pow n ¾ * ¾       ≡⟨ ℚ.*-assoc (b - a) (pow n ¾) ¾ ⟩
           (b - a) * (pow n ¾ * ¾)     ≡⟨ cong ((b - a) *_) (ℚ.*-comm (pow n ¾) ¾) ⟩
           (b - a) * pow (suc n) ¾   ∎)
-    in (+u₂ , +v₂) , Lu₂ , Uv₂ , eq₃
+    in (u₂ , v₂) , Lu₂ , Uv₂ , eq₃
 
 
-estimate : ∀ x ε .{{_ : ℚ.Positive ε}} → ∃[ (u , v) ] L x u ∧ U x v ∧ un-+ v - un-+ u < ε
+estimate : ∀ x ε .{{_ : ℚ.Positive ε}} → ∃[ (u , v) ] L x u ∧ U x v ∧ v - u < ε
 estimate x ε = 
-  let +q@(q , q>0) , Lq , +r@(r , r>0) , Ur = inhabited x
+  let q , Lq , r , Ur = inhabited x
       ε₀ = r - q
       q<r = reverse-located x Lq Ur
       ε₀>0 = a<b→0<b-a q<r
@@ -207,7 +137,7 @@ estimate x ε =
       ratio = ε ÷ ε₀
       instance ratio-pos = pos*pos⇒pos ε (1/ ε₀)
       n = refine-steps ratio
-      ((+u@(u , u>0) , +v@(v , v>0)) , Lu , Uv , v-u=ε₀*¾^n) = refine-n n x +q +r Lq Ur
+      ((u , v) , Lu , Uv , v-u=ε₀*¾^n) = refine-n n x q r Lq Ur
       v-u<ε : v - u < ε
       v-u<ε = let open ℚ.≤-Reasoning in (begin-strict
         v - u             ≡⟨ v-u=ε₀*¾^n ⟩
@@ -218,32 +148,17 @@ estimate x ε =
         1ℚ * ε            ≡⟨ ℚ.*-identityˡ ε ⟩ 
         ε                 ∎)
 
-  in (+u , +v) , Lu , Uv , v-u<ε
+  in (u , v) , Lu , Uv , v-u<ε
 
 
 ------------------------------------------------------------------------
 -- Ordering
 
-data _≤ℝ⁺_ : ℝ⁺ → ℝ⁺ → Set₁ where
-  *≤* : ∀ {x y} → (∀ {q} → L x q → L y q) → x ≤ℝ⁺ y
-
-data _<ℝ⁺_ : ℝ⁺ → ℝ⁺ → Set₁ where
-  *<* : ∀ {x y} q → U x q → L y q → x <ℝ⁺ y
-
 data _≤ᵣ_ : ℝ → ℝ → Set₁ where
-  +≤+ : ∀ {x y} → x ≤ℝ⁺ y → posℝ x ≤ᵣ posℝ y
-  -≤- : ∀ {x y} → y ≤ℝ⁺ x → negℝ x ≤ᵣ negℝ y
-  0≤0 : zeroℝ ≤ᵣ zeroℝ
-  0≤+ : ∀ {x} → zeroℝ ≤ᵣ posℝ x
-  -≤0 : ∀ {x} → negℝ x ≤ᵣ zeroℝ
-  -≤+ : ∀ {x y} → negℝ x ≤ᵣ posℝ y
+  *≤* : ∀ {x y} → (∀ {q} → L x q → L y q) → x ≤ᵣ y
 
 data _<ᵣ_ : ℝ → ℝ → Set₁ where
-  +<+ : ∀ {x y} → x <ℝ⁺ y → posℝ x <ᵣ posℝ y
-  -<- : ∀ {x y} → y <ℝ⁺ x → negℝ x <ᵣ negℝ y
-  0<+ : ∀ {x} → zeroℝ <ᵣ posℝ x
-  -<0 : ∀ {x} → negℝ x <ᵣ zeroℝ
-  -<+ : ∀ {x y} → negℝ x <ᵣ posℝ y
+  *<* : ∀ {x y} q → U x q → L y q → x <ᵣ y
 
 _#ᵣ_ : ℝ → ℝ → Set₁
 x #ᵣ y = (x <ᵣ y) ∨ (y <ᵣ x)
@@ -257,15 +172,6 @@ x ≮ᵣ y = ¬ (x <ᵣ y)
 ------------------------------------------------------------------------
 -- Addition and additive inverse
 
--ᵣ_ : ℝ → ℝ
--ᵣ posℝ x = negℝ x
--ᵣ negℝ x = posℝ x
--ᵣ zeroℝ = zeroℝ
-
-_+ℝ⁺_ : ℝ⁺ → ℝ⁺ → ℝ⁺
-x₁ +ℝ⁺ x₂ = {!   !}
-
-{--
 _+ᵣ_ : ℝ → ℝ → ℝ
 v₁ +ᵣ v₂ = real L' U' inhabited' rounded' disjoint' located'
   where
@@ -532,4 +438,3 @@ v₁ *ᵣ v₂ = real L' U' inhabited' rounded' disjoint' located'
   located' : ∀ {q r} → q < r → L' q ∨ U' r
   located' {q} {r} q<r = {!   !}
  
---}  

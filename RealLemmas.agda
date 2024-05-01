@@ -6,7 +6,7 @@ open import Data.Empty.Irrelevant using (⊥-elim)
 open import Data.Nat.Base as ℕ using (ℕ; zero; suc) renaming (_*_ to _*ₙ_; _^_ to _^ₙ_)
 open import Data.Nat.Logarithm as ℕ using (⌊log₂_⌋)
 import Data.Nat.Properties as ℕ
-open import Data.Integer.Base as ℤ using (ℤ; +[1+_]; -[1+_]; 1ℤ; 0ℤ)
+open import Data.Integer.Base as ℤ using (ℤ; +[1+_]; -[1+_]; 1ℤ)
 import Data.Integer.Properties as ℤ
 open import Data.Integer.DivMod using ([n/d]*d≤n)
 open import Data.Rational.Base as ℚ using (ℚ; _<_; _>_; _/_; 1/_; _≤_; _+_; _-_; -_; _*_; 1ℚ; 0ℚ; ½; toℚᵘ; fromℚᵘ; _⊔_; _⊓_)
@@ -164,8 +164,8 @@ eps-eq ε = begin
   ε/4 = ε * ¼
 
 
-refine-u<v : ∀ {a b} → a < b → a + (b - a) * ¼ < b - (b - a) * ¼ 
-refine-u<v {a} {b} a<b = begin-strict
+u<v : ∀ {a b} → a < b → a + (b - a) * ¼ < b - (b - a) * ¼ 
+u<v {a} {b} a<b = begin-strict
   a + ε/4             ≡⟨ ℚ.+-identityʳ (a + ε/4) ⟨
   a + ε/4 + 0ℚ        <⟨ ℚ.+-monoʳ-< (a + ε/4) ε/2>0 ⟩ 
   a + ε/4 + ε/2       ≡⟨ ℚ.+-assoc a ε/4 ε/2 ⟩ 
@@ -225,8 +225,6 @@ pos*pos⇒pos p@record{} q@record{} = ℚ.positive (begin-strict
     _ : ℚᵘ.Positive ((toℚᵘ p) *ᵘ (toℚᵘ q))
     _ = ℚᵘ.pos*pos⇒pos (toℚᵘ p) (toℚᵘ q)
 
-pos+pos⇒pos : ∀ p q .{{_ : ℚ.Positive p}} .{{_ : ℚ.Positive q}} → ℚ.Positive (p + q)
-pos+pos⇒pos p q = ℚ.positive (ℚ.+-mono-< (ℚ.positive⁻¹ p)  (ℚ.positive⁻¹ q))
 
 neg*neg⇒pos : ∀ p q .{{_ : ℚ.Negative p}} .{{_ : ℚ.Negative q}} → ℚ.Positive (p * q)
 neg*neg⇒pos p@(ℚ.mkℚ -[1+ _ ] _ _) q@(ℚ.mkℚ -[1+ _ ] _ _) = subst ℚ.Positive eq -p*-q-pos
@@ -639,18 +637,3 @@ interval-* {a} {b} {c} {d} a<b c<d
     d-pos = ℚ.positive d>0
   
 --}
-
-------------------------------------------------------------------------
--- Lifting equalities of inequalities
-
-<-equalityℕ : ∀ {m n} (m<n₁ m<n₂ : m ℕ.< n) → m<n₁ ≡ m<n₂
-<-equalityℕ {zero} {suc n} (ℕ.s≤s ℕ.z≤n) (ℕ.s≤s ℕ.z≤n) = refl
-<-equalityℕ {suc m} {suc n} (ℕ.s≤s m<n₁) (ℕ.s≤s m<n₂) = cong ℕ.s≤s (<-equalityℕ m<n₁ m<n₂)
-
-<-equalityℤ : ∀ {x y} (x<y₁ x<y₂ : x ℤ.< y) → x<y₁ ≡ x<y₂
-<-equalityℤ {ℤ.+_ _} {ℤ.+_ _} (ℤ.+<+ m<n₁) (ℤ.+<+ m<n₂) = cong ℤ.+<+ (<-equalityℕ m<n₁ m<n₂)
-<-equalityℤ { -[1+ _ ]} {ℤ.+_ _} ℤ.-<+ ℤ.-<+ = refl
-<-equalityℤ { -[1+ _ ]} { -[1+ _ ]} (ℤ.-<- n<m₁) (ℤ.-<- n<m₂) = cong ℤ.-<- (<-equalityℕ n<m₁ n<m₂) 
-
-<-equalityℚ : ∀ {p q} (p<q₁ p<q₂ : p < q) → p<q₁ ≡ p<q₂
-<-equalityℚ (_<_.*<* l<r₁) (_<_.*<* l<r₂) = cong _<_.*<* (<-equalityℤ l<r₁ l<r₂) 
