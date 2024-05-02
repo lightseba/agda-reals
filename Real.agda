@@ -1,4 +1,4 @@
-{-# OPTIONS --safe #-}
+{-# OPTIONS --allow-unsolved-metas  #-}
 
 module Real where
 
@@ -379,7 +379,7 @@ v₁ *ᵣ v₂ = real L' U' inhabited' rounded' disjoint' located'
 
     a₁<b₁⊓b₂ = <-join-⊓ a₁<b₁ a₁<b₂
     a₂<b₁⊓b₂ = <-join-⊓ a₂<b₁ a₂<b₂
-    a₁⊔a₂<b₁⊓b₂ = >-join-⊔ a₁<b₁⊓b₂ a₂<b₁⊓b₂
+    a'<b' = >-join-⊔ a₁<b₁⊓b₂ a₂<b₁⊓b₂
     
     c₁<d₁ = reverse-located v₂ L₂c₁ U₂d₁
     c₁<d₂ = reverse-located v₂ L₂c₁ U₂d₂
@@ -388,7 +388,7 @@ v₁ *ᵣ v₂ = real L' U' inhabited' rounded' disjoint' located'
 
     c₁<d₁⊓d₂ = <-join-⊓ c₁<d₁ c₁<d₂
     c₂<d₁⊓d₂ = <-join-⊓ c₂<d₁ c₂<d₂
-    c₁⊔c₂<d₁⊓d₂ = >-join-⊔ c₁<d₁⊓d₂ c₂<d₁⊓d₂
+    c'<d' = >-join-⊔ c₁<d₁⊓d₂ c₂<d₁⊓d₂
     
     a' = a₁ ⊔ a₂
     b' = b₁ ⊓ b₂
@@ -399,9 +399,40 @@ v₁ *ᵣ v₂ = real L' U' inhabited' rounded' disjoint' located'
     lo' = *-lo a' b' c' d'
     hi' = *-hi a' b' c' d'
 
-    lo₁≤lo' : lo₁ ≤ lo'
-    lo₁≤lo' = {!   !}
+    a₁≤a' : a₁ ≤ a'
+    a₁≤a' = ℚ.p≤p⊔q a₁ a₂
 
+    lo₁≤lo' : lo₁ ≤ lo'
+    lo₁≤lo' with a' ℚ.≥? 0ℚ | b' ℚ.≤? 0ℚ | c' ℚ.≥? 0ℚ | d' ℚ.≤? 0ℚ 
+    ... | yes a'≥0 | _ | yes c'≥0 | _ = res 
+      where
+      b'≥0 = ℚ.<⇒≤ (ℚ.≤-<-trans a'≥0 a'<b')
+      d'≥0 = ℚ.<⇒≤ (ℚ.≤-<-trans c'≥0 c'<d')
+      c'⊓d'≥0 = ℚ.⊓-glb c'≥0 d'≥0
+      instance
+        _ = ℚ.nonNegative a'≥0
+        _ = ℚ.nonNegative b'≥0
+        _ = ℚ.nonNegative c'≥0
+        _ = ℚ.nonNegative d'≥0
+        _ = ℚ.nonNegative c'⊓d'≥0
+      res = begin
+        lo₁ ≤⟨ *-lo≤ac a₁ b₁ c₁ d₁ ⟩
+        a₁ * c₁ ≤⟨ {!   !} ⟩
+        a' * c' ≡⟨ *-lo-pos-pos a'<b' c'<d' a'≥0 c'≥0 ⟨
+        lo' ∎ where open ℚ.≤-Reasoning
+
+    ... | yes a≥0 | _ | _ | yes d≤0 = {!   !}
+    ... | _ | yes b≤0 | yes c≥0 | _ = {!   !}
+    ... | _ | yes b≤0 | _ | yes d≤0 = {!   !}
+
+    
+    ... | no ¬a≥0 | no ¬b≤0  | yes c≥0 | _ = {!   !}
+    ... | no ¬a≥0 | no ¬b≤0  | _ | yes d≤0 = {!   !}
+    ... | _ | yes b≤0 | no ¬c≥0 | no ¬d≥0 = {!   !}
+    ... | yes a≥0 | _ | no ¬c≥0 | no ¬d≥0 = {!   !}
+    ... | no ¬a≥0 | no ¬b≤0  | no ¬c≥0 | no ¬d≥0 = {!   !}
+    
+    
     hi'≤hi₂ : hi' ≤ hi₂
     hi'≤hi₂ = {!   !}
 
@@ -434,7 +465,10 @@ v₁ *ᵣ v₂ = real L' U' inhabited' rounded' disjoint' located'
     -- ... | tri≈ _ refl _ | _ = {!   !}
     -- ... | tri< x<0 _ _ | _ = {!   !}
     -- ... | tri> _ _ x>0 | _ = {!   !}
-    
+  
+  estimate' : ∀ ε → 0ℚ < ε → Σ[ (q , r) ∈ ℚ × ℚ ] L' q ∧ U' r ∧ r - q < ε
+  estimate' ε₀ ε₀>0 = {!   !}
+  
   located' : ∀ {q r} → q < r → L' q ∨ U' r
   located' {q} {r} q<r = {!   !}
  
