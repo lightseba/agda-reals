@@ -327,11 +327,6 @@ v₁ +ᵣ v₂ = real L' U' inhabited' rounded' disjoint' located'
 _*ᵣ_ : ℝ → ℝ → ℝ
 v₁ *ᵣ v₂ = real L' U' inhabited' rounded' disjoint' located'
   where
-  -- *-lo : ℚ → ℚ → ℚ → ℚ → ℚ
-  -- *-lo a b c d = (a * c) ⊓ (a * d) ⊓ (b * c) ⊓ (b * d)
-  -- *-hi : ℚ → ℚ → ℚ → ℚ → ℚ
-  -- *-hi a b c d = (a * c) ⊔ (a * d) ⊔ (b * c) ⊔ (b * d)
-
   L' = λ q → Σ[ (a , b , c , d) ∈ ℚ × ℚ × ℚ × ℚ ] (L v₁ a ∧ U v₁ b ∧ L v₂ c ∧ U v₂ d ∧ q < *-lo a b c d)
   U' = λ q → Σ[ (a , b , c , d) ∈ ℚ × ℚ × ℚ × ℚ ] (L v₁ a ∧ U v₁ b ∧ L v₂ c ∧ U v₂ d ∧ *-hi a b c d < q)
 
@@ -377,64 +372,45 @@ v₁ *ᵣ v₂ = real L' U' inhabited' rounded' disjoint' located'
     a₂<b₁ = reverse-located v₁ L₁a₂ U₁b₁
     a₂<b₂ = reverse-located v₁ L₁a₂ U₁b₂
 
-    a₁<b₁⊓b₂ = <-join-⊓ a₁<b₁ a₁<b₂
-    a₂<b₁⊓b₂ = <-join-⊓ a₂<b₁ a₂<b₂
-    a'<b' = >-join-⊔ a₁<b₁⊓b₂ a₂<b₁⊓b₂
+    a₁<b' = <-join-⊓ a₁<b₁ a₁<b₂
+    a₂<b' = <-join-⊓ a₂<b₁ a₂<b₂
+    a'<b' = >-join-⊔ a₁<b' a₂<b'
     
     c₁<d₁ = reverse-located v₂ L₂c₁ U₂d₁
     c₁<d₂ = reverse-located v₂ L₂c₁ U₂d₂
     c₂<d₁ = reverse-located v₂ L₂c₂ U₂d₁
     c₂<d₂ = reverse-located v₂ L₂c₂ U₂d₂
 
-    c₁<d₁⊓d₂ = <-join-⊓ c₁<d₁ c₁<d₂
-    c₂<d₁⊓d₂ = <-join-⊓ c₂<d₁ c₂<d₂
-    c'<d' = >-join-⊔ c₁<d₁⊓d₂ c₂<d₁⊓d₂
+    c₁<d' = <-join-⊓ c₁<d₁ c₁<d₂
+    c₂<d' = <-join-⊓ c₂<d₁ c₂<d₂
+    c'<d' = >-join-⊔ c₁<d' c₂<d'
     
-    a' = a₁ ⊔ a₂
-    b' = b₁ ⊓ b₂
-    c' = c₁ ⊔ c₂
-    d' = d₁ ⊓ d₂
-    lo₁ = *-lo a₁ b₁ c₁ d₁
-    hi₂ = *-hi a₂ b₂ c₂ d₂
-    lo' = *-lo a' b' c' d'
-    hi' = *-hi a' b' c' d'
+    a' = a₁ ⊔ a₂; b' = b₁ ⊓ b₂; c' = c₁ ⊔ c₂; d' = d₁ ⊓ d₂
+    lo₁ = *-lo a₁ b₁ c₁ d₁; hi₂ = *-hi a₂ b₂ c₂ d₂
+    lo' = *-lo a' b' c' d'; hi' = *-hi a' b' c' d'
+    
+    i₁ = int a₁ b₁ a₁<b₁; j₁ = int c₁ d₁ c₁<d₁
+    i₂ = int a₂ b₂ a₂<b₂; j₂ = int c₂ d₂ c₂<d₂
+    i' = int a' b' a'<b'; j' = int c' d' c'<d'
 
-    a₁≤a' : a₁ ≤ a'
-    a₁≤a' = ℚ.p≤p⊔q a₁ a₂
+    i'⊂i₁ = (ℚ.p≤p⊔q a₁ a₂) , (ℚ.p⊓q≤p b₁ b₂)
+    i'⊂i₂ = (ℚ.p≤q⊔p a₁ a₂) , (ℚ.p⊓q≤q b₁ b₂)
+    j'⊂j₁ = (ℚ.p≤p⊔q c₁ c₂) , (ℚ.p⊓q≤p d₁ d₂)
+    j'⊂j₂ = (ℚ.p≤q⊔p c₁ c₂) , (ℚ.p⊓q≤q d₁ d₂)
+
+    i'j₁⊂i₁j₁ = *-monoˡ-⊂ i₁ i' j₁ i'⊂i₁
+    i'j'⊂i'j₁ = *-monoʳ-⊂ i' j₁ j' j'⊂j₁
+    i'j'⊂i₁j₁ = ⊂-trans (i' *ᴵ j') (i' *ᴵ j₁) (i₁ *ᴵ j₁) i'j'⊂i'j₁ i'j₁⊂i₁j₁ 
 
     lo₁≤lo' : lo₁ ≤ lo'
-    lo₁≤lo' with a' ℚ.≥? 0ℚ | b' ℚ.≤? 0ℚ | c' ℚ.≥? 0ℚ | d' ℚ.≤? 0ℚ 
-    ... | yes a'≥0 | _ | yes c'≥0 | _ = res 
-      where
-      b'≥0 = ℚ.<⇒≤ (ℚ.≤-<-trans a'≥0 a'<b')
-      d'≥0 = ℚ.<⇒≤ (ℚ.≤-<-trans c'≥0 c'<d')
-      c'⊓d'≥0 = ℚ.⊓-glb c'≥0 d'≥0
-      instance
-        _ = ℚ.nonNegative a'≥0
-        _ = ℚ.nonNegative b'≥0
-        _ = ℚ.nonNegative c'≥0
-        _ = ℚ.nonNegative d'≥0
-        _ = ℚ.nonNegative c'⊓d'≥0
-      res = begin
-        lo₁ ≤⟨ *-lo≤ac a₁ b₁ c₁ d₁ ⟩
-        a₁ * c₁ ≤⟨ {!   !} ⟩
-        a' * c' ≡⟨ *-lo-pos-pos a'<b' c'<d' a'≥0 c'≥0 ⟨
-        lo' ∎ where open ℚ.≤-Reasoning
+    lo₁≤lo' = proj₁ i'j'⊂i₁j₁
+    
+    i'j₂⊂i₂j₂ = *-monoˡ-⊂ i₂ i' j₂ i'⊂i₂
+    i'j'⊂i'j₂ = *-monoʳ-⊂ i' j₂ j' j'⊂j₂
+    i'j'⊂i₂j₂ = ⊂-trans (i' *ᴵ j') (i' *ᴵ j₂) (i₂ *ᴵ j₂) i'j'⊂i'j₂ i'j₂⊂i₂j₂ 
 
-    ... | yes a≥0 | _ | _ | yes d≤0 = {!   !}
-    ... | _ | yes b≤0 | yes c≥0 | _ = {!   !}
-    ... | _ | yes b≤0 | _ | yes d≤0 = {!   !}
-
-    
-    ... | no ¬a≥0 | no ¬b≤0  | yes c≥0 | _ = {!   !}
-    ... | no ¬a≥0 | no ¬b≤0  | _ | yes d≤0 = {!   !}
-    ... | _ | yes b≤0 | no ¬c≥0 | no ¬d≥0 = {!   !}
-    ... | yes a≥0 | _ | no ¬c≥0 | no ¬d≥0 = {!   !}
-    ... | no ¬a≥0 | no ¬b≤0  | no ¬c≥0 | no ¬d≥0 = {!   !}
-    
-    
     hi'≤hi₂ : hi' ≤ hi₂
-    hi'≤hi₂ = {!   !}
+    hi'≤hi₂ = proj₂ i'j'⊂i₂j₂
 
     lo'≤hi' : lo' ≤ hi'
     lo'≤hi' = ac∙ad∙bc∙bd
@@ -451,20 +427,6 @@ v₁ *ᵣ v₂ = real L' U' inhabited' rounded' disjoint' located'
       hi' ≤⟨ hi'≤hi₂ ⟩
       hi₂ <⟨ q>hi₂ ⟩
       q   ∎ where open ℚ.≤-Reasoning
-    
-    -- res : ⊥
-    -- res with  ℚ.<-cmp lo₁ 0ℚ |  ℚ.<-cmp hi₂ 0ℚ
-    -- ... | tri< lo₁<0 _ _ | res2 = {!   !}
-    -- ... | tri≈  b _ | res2 = {!   !}
-    -- ... | tri> _ _ lo₁>0 | res2 = {!   !}
-
-    -- res : ⊥
-    -- res with ℚ.<-dense a₁⊔a₂<b₁⊓b₂ | ℚ.<-dense c₁⊔c₂<d₁⊓d₂
-    -- ... | x , a₁⊔a₂<x , x<b₁⊓b₂ | y , c₁⊔c₂<y , y<d₁⊓d₂ 
-    --   with ℚ.<-cmp x 0ℚ | ℚ.<-cmp y 0ℚ
-    -- ... | tri≈ _ refl _ | _ = {!   !}
-    -- ... | tri< x<0 _ _ | _ = {!   !}
-    -- ... | tri> _ _ x>0 | _ = {!   !}
   
   estimate' : ∀ ε → 0ℚ < ε → Σ[ (q , r) ∈ ℚ × ℚ ] L' q ∧ U' r ∧ r - q < ε
   estimate' ε₀ ε₀>0 = {!   !}
